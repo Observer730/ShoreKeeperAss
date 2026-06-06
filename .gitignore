@@ -1,0 +1,74 @@
+# ==========================================
+# 通用 Git 忽略
+# ==========================================
+.DS_Store
+._*
+.idea/
+**/.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.vs/
+*.suo
+*.user
+*.userprefs
+*.tmp
+*.log
+node_modules/
+npm-debug.log*
+
+# ==========================================
+# Unity 官方标准忽略
+# ==========================================
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+UserSettings/
+MemoryCaptures/
+Recordings/
+
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+
+# 自动生成的工程文件
+*.csproj
+*.unityproj
+*.sln
+*.pidb
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# ==========================================
+# WPF / .NET 工程忽略（全局生效）
+# ==========================================
+bin/
+obj/
+Bin/
+Obj/
+*.exe
+*.dll
+*.pdb
+*.resources
+*.cache
+*.user
+launchSettings.json
+
+
+# ==========================================
+# 大文件/设计源文件（不提交）
+# ==========================================
+*.psd
+*.psb
+*.ai

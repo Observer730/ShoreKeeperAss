@@ -1,0 +1,10 @@
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\ShoreKeeper.Host.Wpf.csproj.AssemblyReference.cache
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\MainWindow.baml
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\MainWindow.g.cs
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\App.g.cs
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\ShoreKeeper.Host.Wpf_MarkupCompile.cache
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\ShoreKeeper.Host.Wpf.g.resources
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\ShoreKeeper.Host.Wpf.GeneratedMSBuildEditorConfig.editorconfig
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\ShoreKeeper.Host.Wpf.AssemblyInfoInputs.cache
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\ShoreKeeper.Host.Wpf.AssemblyInfo.cs
+E:\Project\ShoreKeeperAss\.build\host-obj\Debug\net8.0-windows\ShoreKeeper.Host.Wpf.csproj.CoreCompileInputs.cache
