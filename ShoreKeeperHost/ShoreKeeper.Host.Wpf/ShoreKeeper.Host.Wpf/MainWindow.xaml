@@ -4,10 +4,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="ShoreKeeper Host" Height="600" Width="900"
-        MinHeight="500" MinWidth="760">
+        Title="ShoreKeeper Host" Height="780" Width="900"
+        MinHeight="700" MinWidth="760">
     <Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -65,7 +66,59 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="2" Margin="0,12">
+        <GroupBox Grid.Row="2" Header="Unreal 免费资产提醒" Margin="0,12,0,0" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal">
+                    <TextBlock Text="提醒内容" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBox x:Name="ReminderTitleTextBox" Height="28" Width="360" VerticalContentAlignment="Center"
+                             Text="领取 Unreal 本月免费资产" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,10,0,0">
+                    <TextBlock Text="固定时间提醒（每月循环）" FontWeight="SemiBold" />
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <TextBlock Text="每月" VerticalAlignment="Center" />
+                        <TextBox x:Name="MonthlyDayTextBox" Width="44" Height="28" Margin="6,0,0,0"
+                                 VerticalContentAlignment="Center" Text="1" />
+                        <TextBlock Text="日" VerticalAlignment="Center" Margin="6,0,0,0" />
+                        <TextBox x:Name="MonthlyTimeTextBox" Width="56" Height="28" Margin="12,0,0,0"
+                                 VerticalContentAlignment="Center" Text="10:00" />
+                        <Button x:Name="AddMonthlyReminderButton" Width="72" Height="28" Margin="12,0,0,0"
+                                Click="AddMonthlyReminderButton_Click" Content="添加" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,10,0,0">
+                    <TextBlock Text="具体日期提醒（单次）" FontWeight="SemiBold" />
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <DatePicker x:Name="OneTimeDatePicker" Width="130" Height="28" />
+                        <TextBox x:Name="OneTimeTimeTextBox" Width="56" Height="28" Margin="8,0,0,0"
+                                 VerticalContentAlignment="Center" Text="10:00" />
+                        <Button x:Name="AddOneTimeReminderButton" Width="72" Height="28" Margin="12,0,0,0"
+                                Click="AddOneTimeReminderButton_Click" Content="添加" />
+                    </StackPanel>
+                </StackPanel>
+
+                <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,10,0,0">
+                    <Button x:Name="RemoveReminderButton" DockPanel.Dock="Right" Width="80" Height="26"
+                            Margin="8,0,0,0" Click="RemoveReminderButton_Click" Content="删除选中" />
+                    <ListBox x:Name="RemindersListBox" Height="64" />
+                </DockPanel>
+            </Grid>
+        </GroupBox>
+
+        <Grid Grid.Row="3" Margin="0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*" />
                 <ColumnDefinition Width="12" />
@@ -85,7 +138,7 @@
             </GroupBox>
         </Grid>
 
-        <DockPanel Grid.Row="3">
+        <DockPanel Grid.Row="4">
             <Button x:Name="SendButton" DockPanel.Dock="Right" Width="96" Height="34" Margin="8,0,0,0" Click="SendButton_Click" Content="Send" IsEnabled="False" />
             <TextBox x:Name="MessageTextBox" Height="34" VerticalContentAlignment="Center" Text="Message from WPF Host" KeyDown="MessageTextBox_KeyDown" />
         </DockPanel>

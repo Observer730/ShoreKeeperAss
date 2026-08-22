@@ -1,6 +1,7 @@
 using ShoreKeeper.Host.Wpf.Audio;
 using ShoreKeeper.Host.Wpf.Communication;
 using ShoreKeeper.Host.Wpf.OpenAI;
+using ShoreKeeper.Host.Wpf.Reminders;
 using System.Windows;
 using System.Windows.Input;
 
@@ -12,6 +13,7 @@ namespace ShoreKeeper.Host.Wpf
         private readonly AudioRecordingService _recorder = new();
         private readonly OpenAITranscriptionService _transcriptionService = new();
         private readonly LocalWhisperTranscriptionService _localWhisperTranscriptionService = new();
+        private readonly ReminderService _reminderService = new();
         private string? _lastRecordingFilePath;
 
         public MainWindow()
@@ -23,6 +25,10 @@ namespace ShoreKeeper.Host.Wpf
             _recorder.LogReceived += OnLogReceived;
             _recorder.RecordingStopped += OnRecordingStopped;
             RecordingsFolderTextBlock.Text = $"Folder: {_recorder.RecordingsDirectory}";
+            _reminderService.ReminderFired += OnReminderFired;
+            RefreshRemindersList();
+            _reminderService.Start();
+            AddLog($"Reminders store: {_reminderService.StoreFilePath}");
             Closed += MainWindow_Closed;
         }
 
@@ -172,6 +178,110 @@ namespace ShoreKeeper.Host.Wpf
             return _localWhisperTranscriptionService.TranscribeAsync(filePath);
         }
 
+        private void AddMonthlyReminderButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!int.TryParse(MonthlyDayTextBox.Text.Trim(), out var day) || day < 1 || day > 31)
+            {
+                AddLog("每月提醒：日期必须是 1-31 之间的数字");
+                return;
+            }
+
+            if (!TimeOnly.TryParse(MonthlyTimeTextBox.Text.Trim(), out var time))
+            {
+                AddLog("每月提醒：时间格式不正确，请使用 HH:mm（如 10:00）");
+                return;
+            }
+
+            _reminderService.Add(new ReminderItem
+            {
+                Title = GetReminderTitle(),
+                Kind = ReminderKind.Monthly,
+                DayOfMonth = day,
+                TimeOfDay = time
+            });
+            RefreshRemindersList();
+            AddLog($"已添加每月提醒：每月 {day} 日 {time:HH:mm}");
+        }
+
+        private void AddOneTimeReminderButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (OneTimeDatePicker.SelectedDate is not { } date)
+            {
+                AddLog("具体日期提醒：请先选择日期");
+                return;
+            }
+
+            if (!TimeOnly.TryParse(OneTimeTimeTextBox.Text.Trim(), out var time))
+            {
+                AddLog("具体日期提醒：时间格式不正确，请使用 HH:mm（如 10:00）");
+                return;
+            }
+
+            var at = date.Date + time.ToTimeSpan();
+            if (at <= DateTime.Now)
+            {
+                AddLog("具体日期提醒：触发时间必须晚于当前时间");
+                return;
+            }
+
+            _reminderService.Add(new ReminderItem
+            {
+                Title = GetReminderTitle(),
+                Kind = ReminderKind.OneTime,
+                SpecificDateTime = at
+            });
+            RefreshRemindersList();
+            AddLog($"已添加单次提醒：{at:yyyy-MM-dd HH:mm}");
+        }
+
+        private void RemoveReminderButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (RemindersListBox.SelectedItem is not ReminderItem selected)
+            {
+                AddLog("请先在列表中选择要删除的提醒");
+                return;
+            }
+
+            _reminderService.Remove(selected);
+            RefreshRemindersList();
+        }
+
+        private string GetReminderTitle()
+        {
+            var title = ReminderTitleTextBox.Text.Trim();
+            return string.IsNullOrWhiteSpace(title) ? "领取 Unreal 免费资产" : title;
+        }
+
+        private void RefreshRemindersList()
+        {
+            RemindersListBox.Items.Clear();
+            foreach (var item in _reminderService.Reminders)
+            {
+                RemindersListBox.Items.Add(item);
+            }
+        }
+
+        private void OnReminderFired(ReminderItem item)
+        {
+            Dispatcher.Invoke(async () =>
+            {
+                RefreshRemindersList();
+                AddLog($"提醒触发：{item}");
+
+                var message = new AssistantMessage
+                {
+                    Source = "host",
+                    Type = "reminder",
+                    Text = $"⏰ {item.Title}"
+                };
+                AddMessage(message);
+                await _server.BroadcastAsync(message);
+
+                MessageBox.Show(this, item.Title, "Unreal 免费资产提醒",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            });
+        }
+
         private void OnMessageReceived(AssistantMessage message)
         {
             Dispatcher.Invoke(() => AddMessage(message));
@@ -228,6 +338,7 @@ namespace ShoreKeeper.Host.Wpf
 
         private async void MainWindow_Closed(object? sender, EventArgs e)
         {
+            _reminderService.Stop();
             _recorder.Dispose();
             await _server.DisposeAsync();
         }

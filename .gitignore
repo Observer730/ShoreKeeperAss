@@ -37,8 +37,9 @@ sysinfo.txt
 *.app
 
 
-# 自动生成的工程文件
+# 自动生成的工程文件（Unity 端）；ShoreKeeperHost 的 csproj 为手工维护，需要提交
 *.csproj
+!ShoreKeeperHost/**/*.csproj
 *.unityproj
 *.sln
 *.pidb
