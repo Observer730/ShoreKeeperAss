@@ -1,4 +1,7 @@
 OpenAI.ApiKey.local.txt
 TempBuild/
 LocalWhisper/output/
+LocalWhisper/*.exe
+LocalWhisper/models/*.bin
 OpenAI.ApiKey.local.txt
+LocalWhisper.zip
