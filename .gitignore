@@ -37,10 +37,8 @@ sysinfo.txt
 *.app
 
 
-# 自动生成的工程文件
-*.csproj
+# 自动生成的工程文件 (Unity 用;WPF 的 .sln/.csproj 必须入库)
 *.unityproj
-*.sln
 *.pidb
 *.pdb
 *.mdb
