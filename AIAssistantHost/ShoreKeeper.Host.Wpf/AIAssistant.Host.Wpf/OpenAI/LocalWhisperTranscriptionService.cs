@@ -20,6 +20,12 @@ public sealed class LocalWhisperTranscriptionService
 
     public string Language { get; set; } = "zh";
 
+    /// <summary>
+    /// When set, this exact model file is used (e.g. "ggml-medium.bin").
+    /// When null, the first available model in <see cref="ModelNames"/> order is used.
+    /// </summary>
+    public string? ModelName { get; set; }
+
     public async Task<string> TranscribeAsync(string filePath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -34,7 +40,7 @@ public sealed class LocalWhisperTranscriptionService
 
         var rootDirectory = ResolveLocalWhisperDirectory();
         var executablePath = ResolveFirstExistingPath(rootDirectory, ExecutableNames);
-        var modelPath = ResolveFirstExistingPath(Path.Combine(rootDirectory, "models"), ModelNames);
+        var modelPath = ResolveModelPath(rootDirectory);
 
         if (executablePath is null)
         {
@@ -135,6 +141,25 @@ public sealed class LocalWhisperTranscriptionService
         }
 
         return Path.Combine(AppContext.BaseDirectory, "LocalWhisper");
+    }
+
+    private string? ResolveModelPath(string rootDirectory)
+    {
+        var modelsDir = Path.Combine(rootDirectory, "models");
+
+        // 1. Explicit override via ModelName
+        if (!string.IsNullOrWhiteSpace(ModelName))
+        {
+            var explicitPath = Path.Combine(modelsDir, ModelName);
+            if (File.Exists(explicitPath))
+            {
+                return explicitPath;
+            }
+            // ModelName was set but file is missing - fall through to default search
+        }
+
+        // 2. Default search order
+        return ResolveFirstExistingPath(modelsDir, ModelNames);
     }
 
     private static string? ResolveFirstExistingPath(string directory, IEnumerable<string> names)

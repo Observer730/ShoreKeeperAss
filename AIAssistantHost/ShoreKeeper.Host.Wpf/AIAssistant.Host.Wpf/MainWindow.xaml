@@ -58,7 +58,14 @@
                 <Button x:Name="TranscribeButton" Grid.Row="0" Grid.Column="3" Width="124" Height="32" Margin="8,0,0,0" Click="TranscribeButton_Click" Content="Transcribe Last" IsEnabled="False" />
                 <TextBlock x:Name="RecordingStatusTextBlock" Grid.Row="0" Grid.Column="4" Margin="12,0,0,0" VerticalAlignment="Center" Text="Recorder idle" Foreground="#6B7280" />
 
-                <TextBlock x:Name="RecordingsFolderTextBlock" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,8,0,0" TextWrapping="Wrap" />
+                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="RecordingsFolderTextBlock" Grid.Column="0" TextWrapping="Wrap" />
+                    <CheckBox x:Name="UseMediumModelCheckBox" Grid.Column="1" Content="Use medium model (slower, better)" Margin="12,0,0,0" VerticalAlignment="Center" />
+                </Grid>
 
                 <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" Orientation="Horizontal" Margin="0,8,0,0">
                     <TextBlock Text="Voice:" VerticalAlignment="Center" Margin="0,0,6,0"/>

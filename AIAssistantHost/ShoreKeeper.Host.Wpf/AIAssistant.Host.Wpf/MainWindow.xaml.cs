@@ -33,6 +33,10 @@ namespace AIAssistant.Host.Wpf
             VoiceStatusTextBlock.Text = $"当前 voice: {_ttsService.VoiceId}";
             CustomVoiceIdTextBox.IsEnabled = false;  // 默认非 Custom,禁用
 
+            // medium 模型切换 -> LocalWhisperTranscriptionService
+            UseMediumModelCheckBox.Checked += (_, _) => _localWhisperTranscriptionService.ModelName = "ggml-medium.bin";
+            UseMediumModelCheckBox.Unchecked += (_, _) => _localWhisperTranscriptionService.ModelName = null;
+
             // 手动初始化 voice 到 ComboBox 第 0 项(避免 XAML 在 InitializeComponent 阶段触发 SelectionChanged 导致 null ref)
             if (VoiceComboBox.Items.Count > 0 && VoiceComboBox.SelectedIndex < 0)
             {
