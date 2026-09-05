@@ -37,15 +37,17 @@ sysinfo.txt
 *.app
 
 
-# 自动生成的工程文件 (Unity 用;WPF 的 .sln/.csproj 必须入库)
+# Unity 自动生成的工程文件 (IDE 每次启动会重新生成,不入库)
+/AIAssistantClient/*.sln
+/AIAssistantClient/*.csproj
+
+# Unity 旧式 project / 数据库文件
 *.unityproj
 *.pidb
-*.pdb
 *.mdb
 *.opendb
 *.VC.db
 *.pidb.meta
-*.pdb.meta
 *.mdb.meta
 
 # ==========================================
