@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Remote.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AIAssistant.Host.Wpf\Reading\*.cs" Link="Reading\%(Filename)%(Extension)" />
+    <Compile Include="..\AIAssistant.Host.Wpf\Remote\ReadingHttpServer.cs" Link="Remote\ReadingHttpServer.cs" />
+    <EmbeddedResource Include="..\AIAssistant.Host.Wpf\Remote\ReaderPage.html" LogicalName="ReaderPage.html" />
+  </ItemGroup>
+
+</Project>

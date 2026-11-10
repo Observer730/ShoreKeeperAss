@@ -72,3 +72,9 @@ launchSettings.json
 *.psd
 *.psb
 *.ai
+
+# AI 听书运行时断点
+/AIAssistantHost/ShoreKeeper.Host.Wpf/AIAssistant.Host.Wpf/books/
+
+# 本地测试书（体积大、版权内容，不提交）
+/AIAssistantHost/ShoreKeeper.Host.Wpf/AIAssistant.Host.Wpf/Book/

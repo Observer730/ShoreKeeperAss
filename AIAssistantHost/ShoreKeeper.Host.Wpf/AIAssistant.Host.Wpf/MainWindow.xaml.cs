@@ -2,6 +2,8 @@ using AIAssistant.Host.Wpf.Audio;
 using AIAssistant.Host.Wpf.Communication;
 using AIAssistant.Host.Wpf.MiniMax;
 using AIAssistant.Host.Wpf.OpenAI;
+using AIAssistant.Host.Wpf.Reading;
+using AIAssistant.Host.Wpf.Remote;
 using System.Collections.Concurrent;
 using System.Windows;
 using System.Windows.Input;
@@ -18,6 +20,9 @@ namespace AIAssistant.Host.Wpf
         private readonly MiniMaxTtsService _ttsService = new();
         private readonly ConcurrentDictionary<string, List<(string role, string content)>> _sessions = new();
         private string? _lastRecordingFilePath;
+        private ReadingService? _readingService;
+        private ReadingHttpServer? _readingServer;
+        private ReadingWindow? _readingWindow;
 
         public MainWindow()
         {
@@ -41,6 +46,48 @@ namespace AIAssistant.Host.Wpf
             if (VoiceComboBox.Items.Count > 0 && VoiceComboBox.SelectedIndex < 0)
             {
                 VoiceComboBox.SelectedIndex = 0;
+            }
+
+            try
+            {
+                var recordings = _recorder.RecordingsDirectory;
+                var projectDir = System.IO.Directory.GetParent(recordings)?.FullName ?? AppContext.BaseDirectory;
+                _readingService = new ReadingService(projectDir, recordings, _ttsService.VoiceId);
+                _readingService.Log += text => Dispatcher.Invoke(() => AddLog(text));
+                var port = int.TryParse(Environment.GetEnvironmentVariable("READING_HTTP_PORT"), out var p) ? p : 47630;
+                _readingServer = new ReadingHttpServer(_readingService, port);
+                _readingServer.Log += text =>
+                {
+                    try
+                    {
+                        _ = Dispatcher.InvokeAsync(() => AddLog(text));
+                    }
+                    catch (Exception)
+                    {
+                    }
+                };
+                _ = StartReadingServerAsync();
+            }
+            catch (Exception ex)
+            {
+                AddLog("[Reading] " + ex.Message);
+            }
+        }
+
+        private async Task StartReadingServerAsync()
+        {
+            if (_readingServer is null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _readingServer.StartAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                AddLog("[Reading] HTTP 启动失败: " + ex.Message);
             }
         }
 
@@ -426,8 +473,59 @@ namespace AIAssistant.Host.Wpf
                 : "Stopped";
         }
 
+        private void ReadingButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_readingService is null)
+                {
+                    var recordings = _recorder.RecordingsDirectory;
+                    var project = System.IO.Directory.GetParent(recordings)?.FullName ?? AppContext.BaseDirectory;
+                    _readingService = new ReadingService(project, recordings, _ttsService.VoiceId);
+                    _readingService.Log += text => Dispatcher.Invoke(() => AddLog(text));
+                }
+                else
+                {
+                    _readingService.VoiceId = _ttsService.VoiceId;
+                }
+
+                if (_readingWindow is null || !_readingWindow.IsLoaded)
+                {
+                    _readingWindow = new ReadingWindow(_readingService) { Owner = this };
+                }
+
+                _readingWindow.Show();
+                _readingWindow.Activate();
+            }
+            catch (Exception ex)
+            {
+                AddLog("[Reading] " + ex.Message);
+            }
+        }
+
         private async void MainWindow_Closed(object? sender, EventArgs e)
         {
+            try
+            {
+                if (_readingServer is not null)
+                {
+                    await _readingServer.DisposeAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                AddLog("[Reading] " + ex.Message);
+            }
+
+            try
+            {
+                _readingService?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                AddLog("[Reading] " + ex.Message);
+            }
+
             _recorder.Dispose();
             await _server.DisposeAsync();
         }

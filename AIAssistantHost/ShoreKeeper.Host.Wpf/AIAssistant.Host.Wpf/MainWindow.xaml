@@ -29,6 +29,7 @@
                 <TextBox x:Name="PortTextBox" Grid.Column="1" Height="30" Text="47621" VerticalContentAlignment="Center" />
                 <Button x:Name="StartButton" Grid.Column="2" Width="88" Height="30" Margin="12,0,0,0" Click="StartButton_Click" Content="Start" />
                 <Button x:Name="StopButton" Grid.Column="3" Width="88" Height="30" Margin="8,0,0,0" Click="StopButton_Click" Content="Stop" IsEnabled="False" />
+                <Button x:Name="ReadingButton" Grid.Column="4" Width="96" Height="30" Margin="12,0,12,0" HorizontalAlignment="Right" Click="ReadingButton_Click" Content="AI 听书" />
                 <TextBlock x:Name="StatusTextBlock" Grid.Column="5" VerticalAlignment="Center" Text="Stopped" Foreground="#6B7280" />
             </Grid>
         </Border>

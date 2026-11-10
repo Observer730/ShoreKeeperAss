@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<title>AI 听书</title>
+<style>
+  :root { color-scheme: dark; --bg:#0d1117; --panel:#161c24; --line:#273140; --text:#e6edf3; --muted:#8b98a8; --accent:#4da3ff; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  html, body { overflow-x:hidden; max-width:100vw; }
+  body { min-height:100vh; padding-bottom: env(safe-area-inset-bottom); }
+  header { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:10px; padding:12px 14px; background:rgba(13,17,23,.94); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  header h1 { flex:1; margin:0; font-size:17px; font-weight:600; white-space:nowrap; }
+  #status { max-width:55%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:12px; }
+  main { padding:12px 14px 24px; max-width:760px; margin:0 auto; width:100%; }
+  .row { display:flex; gap:8px; align-items:center; min-width:0; }
+  .row + .row { margin-top:10px; }
+  select, button, input[type=range] { font:inherit; }
+  select { flex:1; min-width:0; max-width:100%; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:9px 10px; }
+  #bookSel { flex:2; }
+  #chapterSel { flex:1; }
+  .card { margin-top:12px; padding:14px; background:var(--panel); border:1px solid var(--line); border-radius:14px; }
+  #chapterTitle { color:var(--accent); font-size:13px; margin-bottom:8px; }
+  #segText { min-height:130px; max-height:42vh; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; font-size:17px; line-height:1.75; }
+  .time { display:flex; justify-content:space-between; color:var(--muted); font-size:12px; margin-top:8px; font-variant-numeric:tabular-nums; }
+  input[type=range] { width:100%; accent-color:var(--accent); margin:10px 0 0; }
+  .controls { display:grid; grid-template-columns:1fr 1.4fr 1fr; gap:10px; margin-top:14px; }
+  .controls button { padding:13px 8px; border:1px solid var(--line); border-radius:12px; background:#1d2632; color:var(--text); font-size:15px; }
+  .controls button:active { background:#253244; }
+  #playBtn { background:var(--accent); border-color:var(--accent); color:#06101c; font-weight:700; }
+  #toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); max-width:88vw; padding:10px 14px; border-radius:10px; background:#243044; color:var(--text); font-size:13px; opacity:0; pointer-events:none; transition:opacity .2s; z-index:20; }
+  #toast.show { opacity:1; }
+  #tokenBox { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.72); padding:24px; }
+  #tokenBox[hidden] { display:none; }
+  #tokenBox .card { width:100%; max-width:360px; margin:0; }
+  #tokenBox p { color:var(--muted); font-size:13px; }
+  #tokenBox input { width:100%; margin:10px 0; padding:11px; border-radius:10px; border:1px solid var(--line); background:#0f151d; color:var(--text); }
+  #tokenBox button { width:100%; padding:11px; border-radius:10px; border:0; background:var(--accent); color:#06101c; font-weight:700; }
+  .hint { color:var(--muted); font-size:12px; text-align:center; margin-top:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI 听书</h1>
+  <span id="status">加载中…</span>
+</header>
+<main>
+  <div class="row">
+    <select id="bookSel" aria-label="选择书籍"></select>
+    <select id="chapterSel" aria-label="选择章节"></select>
+  </div>
+  <div class="card">
+    <div id="chapterTitle"></div>
+    <div id="segText">请选择一本书开始听。</div>
+    <div class="time"><span id="posText">0:00</span><span id="totalText">0:00</span></div>
+    <input id="seek" type="range" min="0" max="0" step="1" value="0" aria-label="整书进度">
+    <input id="posRange" type="range" min="0" max="0" step="0.1" value="0" aria-label="当前段进度">
+    <div class="time"><span id="segLabel">第 0 / 0 段</span><span id="speedText">1.0×</span></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <select id="speedSel" aria-label="倍速">
+      <option value="0.75">0.75×</option>
+      <option value="1" selected>1.0×</option>
+      <option value="1.25">1.25×</option>
+      <option value="1.5">1.5×</option>
+      <option value="2">2.0×</option>
+    </select>
+  </div>
+  <div class="controls">
+    <button id="prevBtn">上一段</button>
+    <button id="playBtn">播放</button>
+    <button id="nextBtn">下一段</button>
+  </div>
+  <div class="hint">进度会自动同步；手机上可直接拖动进度条。</div>
+</main>
+<div id="toast"></div>
+<div id="tokenBox" hidden>
+  <div class="card">
+    <b>需要访问 token</b>
+    <p>请粘贴 PhoneView 启动时打印的 token（地址里的 ?t= 参数）。</p>
+    <input id="tokenInput" type="password" autocomplete="off" placeholder="token">
+    <button id="tokenBtn">进入听书</button>
+  </div>
+</div>
+<audio id="audio" preload="metadata"></audio>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var TOKEN = '';
+  try {
+    var fromUrl = new URLSearchParams(location.search).get('t') || '';
+    TOKEN = (fromUrl || localStorage.getItem('pv-token') || '').trim();
+    if (TOKEN) localStorage.setItem('pv-token', TOKEN);
+  } catch (e) { TOKEN = ''; }
+  var BASE = location.pathname.replace(/\/+$/, '');
+  var audio = $('audio');
+  var books = [];
+  var book = null;
+  var chapters = [];
+  var segments = new Map();
+  var total = 0;
+  var index = 0;
+  var speed = 1;
+  var lastSave = 0;
+  var pendingSeek = 0;
+  var draggingPos = false;
+
+  function setStatus(text) { $('status').textContent = text || ''; }
+  var toastTimer = 0;
+  function toast(text) {
+    var el = $('toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 3200);
+  }
+  function clock(seconds) {
+    if (!isFinite(seconds) || seconds < 0) seconds = 0;
+    seconds = Math.floor(seconds);
+    var h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = seconds % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+  }
+  function apiUrl(path, extra) {
+    var u = new URL(BASE + path, location.origin);
+    if (TOKEN) u.searchParams.set('t', TOKEN);
+    if (extra) for (var k in extra) u.searchParams.set(k, extra[k]);
+    return u.toString();
+  }
+  function api(path, opts) {
+    opts = opts || {};
+    var headers = Object.assign({}, opts.headers || {});
+    if (TOKEN) headers['x-pv-token'] = TOKEN;
+    return fetch(apiUrl(path), Object.assign({}, opts, { headers: headers, cache: 'no-store' }));
+  }
+  function getJson(path) {
+    return api(path).then(function (res) {
+      if (res.status === 401) { showToken(); throw new Error('token 无效或缺失'); }
+      if (!res.ok) {
+        return res.text().then(function (t) { throw new Error(res.status + ' ' + t.slice(0, 160)); });
+      }
+      return res.json();
+    });
+  }
+  function showToken() {
+    $('tokenBox').hidden = false;
+  }
+  function mediaUrl(i) {
+    return apiUrl('/media/' + encodeURIComponent(book.id) + '/' + i + '.mp3');
+  }
+  function nearestSpeed(value) {
+    var choices = [0.75, 1, 1.25, 1.5, 2];
+    var best = 1, dist = 1e9;
+    choices.forEach(function (c) { var d = Math.abs(c - value); if (d < dist) { best = c; dist = d; } });
+    return best;
+  }
+  function segmentAt(i) { return segments.get(i) || null; }
+
+  function updateUI() {
+    var seg = segmentAt(index);
+    if (seg) {
+      $('chapterTitle').textContent = seg.chapterTitle || '';
+      $('segText').textContent = seg.text || '';
+      $('chapterSel').value = String(seg.chapterIndex);
+      if ('mediaSession' in navigator && window.MediaMetadata) {
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: seg.chapterTitle || book.title,
+            artist: book.title,
+            album: book.title
+          });
+        } catch (e) { /* ignore */ }
+      }
+    }
+    $('seek').max = Math.max(0, total - 1);
+    $('seek').value = String(index);
+    $('segLabel').textContent = '第 ' + (total ? index + 1 : 0) + ' / ' + total + ' 段';
+    $('posText').textContent = clock(audio.currentTime || 0);
+    $('totalText').textContent = clock(audio.duration || 0);
+    $('speedText').textContent = speed.toFixed(2).replace(/0$/, '') + '×';
+    $('playBtn').textContent = audio.paused ? '播放' : '暂停';
+    document.title = (book ? book.title : 'AI 听书') + ' · AI 听书';
+  }
+
+  function updatePos() {
+    if (!draggingPos) {
+      $('posRange').max = isFinite(audio.duration) ? audio.duration : 0;
+      $('posRange').value = String(audio.currentTime || 0);
+    }
+    $('posText').textContent = clock(audio.currentTime || 0);
+    $('totalText').textContent = clock(audio.duration || 0);
+  }
+
+  function save(force) {
+    if (!book) return;
+    var now = Date.now();
+    if (!force && now - lastSave < 5000) return;
+    lastSave = now;
+    var seg = segmentAt(index);
+    var body = {
+      bookId: book.id,
+      segmentIndex: index,
+      chapterIndex: seg ? seg.chapterIndex : 0,
+      positionSeconds: audio.currentTime || 0,
+      speed: speed
+    };
+    api('/api/progress', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true
+    }).catch(function () { /* 离线时下一轮再存 */ });
+  }
+
+  function loadWindow(i, force) {
+    if (!book) return Promise.resolve();
+    if (!force && segmentAt(i)) { updateUI(); return Promise.resolve(); }
+    var from = Math.max(0, i - 100);
+    return getJson('/api/books/' + book.id + '/segments?from=' + from + '&count=200' + '&t=' + encodeURIComponent(TOKEN))
+      .then(function (data) {
+        (data.segments || []).forEach(function (s) { segments.set(s.i, s); });
+        if (!segmentAt(i)) {
+          return getJson('/api/books/' + book.id + '/segments?from=' + i + '&count=1' + '&t=' + encodeURIComponent(TOKEN))
+            .then(function (one) { (one.segments || []).forEach(function (s) { segments.set(s.i, s); }); });
+        }
+        return null;
+      })
+      .then(function () { updateUI(); });
+  }
+
+  function play() {
+    if (!book) return Promise.resolve();
+    if (!audio.src || audio.getAttribute('data-index') !== String(index)) {
+      audio.setAttribute('data-index', String(index));
+      audio.src = mediaUrl(index);
+      audio.load();
+    }
+    audio.playbackRate = speed;
+    return audio.play().catch(function (err) {
+      setStatus('播放被浏览器拦截，请再点一次播放');
+      throw err;
+    });
+  }
+
+  function setSegment(i, autoplay) {
+    if (!book) return Promise.resolve();
+    index = Math.max(0, Math.min(total - 1, i | 0));
+    return loadWindow(index).then(function () {
+      audio.setAttribute('data-index', String(index));
+      audio.src = mediaUrl(index);
+      audio.playbackRate = speed;
+      audio.load();
+      updateUI();
+      if (autoplay) return play();
+      return null;
+    });
+  }
+
+  function next(auto) {
+    if (!book) return;
+    if (index + 1 >= total) {
+      setStatus('已到全书末尾');
+      save(true);
+      return;
+    }
+    setSegment(index + 1, auto).catch(function (e) { toast(e.message); });
+  }
+  function prev() {
+    if (!book) return;
+    var wasPlaying = !audio.paused;
+    setSegment(index - 1, wasPlaying).catch(function (e) { toast(e.message); });
+  }
+
+  function openBook(id) {
+    setStatus('打开中…');
+    return getJson('/api/books/' + id + '?t=' + encodeURIComponent(TOKEN)).then(function (data) {
+      book = data;
+      chapters = data.chapters || [];
+      total = data.segmentCount || 0;
+      segments.clear();
+      var chapterHtml = '';
+      chapters.forEach(function (c) {
+        chapterHtml += '<option value="' + c.index + '" data-first="' + c.firstSegmentIndex + '">' + escapeHtml(c.title || ('第 ' + (c.index + 1) + ' 章')) + '</option>';
+      });
+      $('chapterSel').innerHTML = chapterHtml;
+      var p = data.progress;
+      index = p ? Math.max(0, Math.min(total - 1, p.segmentIndex | 0)) : 0;
+      speed = p && p.speed ? nearestSpeed(p.speed) : 1;
+      $('speedSel').value = String(speed);
+      audio.playbackRate = speed;
+      pendingSeek = p ? Math.max(0, p.positionSeconds || 0) : 0;
+      $('seek').max = Math.max(0, total - 1);
+      $('seek').value = String(index);
+      return loadWindow(index, true).then(function () {
+        audio.setAttribute('data-index', String(index));
+        audio.src = mediaUrl(index);
+        audio.load();
+        updateUI();
+        setStatus(book.title + ' · 共 ' + total + ' 段');
+        document.title = book.title + ' · AI 听书';
+      });
+    });
+  }
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function loadBooks() {
+    return getJson('/api/books').then(function (data) {
+      books = data.books || [];
+      var html = '';
+      books.forEach(function (b) {
+        html += '<option value="' + b.id + '">' + escapeHtml(b.title) + '</option>';
+      });
+      $('bookSel').innerHTML = html || '<option value="">书库为空</option>';
+      if (books.length) return openBook(books[0].id);
+      setStatus('书库为空，请把 txt/epub 放进 Book 目录');
+      return null;
+    });
+  }
+
+  $('bookSel').addEventListener('change', function () {
+    if (this.value) openBook(this.value).catch(function (e) { toast(e.message); });
+  });
+  $('chapterSel').addEventListener('change', function () {
+    var opt = this.options[this.selectedIndex];
+    if (!opt) return;
+    var first = parseInt(opt.getAttribute('data-first') || '0', 10);
+    setSegment(first, !audio.paused).catch(function (e) { toast(e.message); });
+  });
+  $('speedSel').addEventListener('change', function () {
+    speed = parseFloat(this.value) || 1;
+    audio.playbackRate = speed;
+    updateUI();
+    save(true);
+  });
+  $('playBtn').addEventListener('click', function () {
+    if (audio.paused) {
+      play().catch(function (e) { toast(e.message); });
+    } else {
+      audio.pause();
+      save(true);
+    }
+  });
+  $('prevBtn').addEventListener('click', prev);
+  $('nextBtn').addEventListener('click', function () { next(!audio.paused); });
+  $('seek').addEventListener('input', function () {
+    var i = parseInt(this.value, 10) || 0;
+    $('segLabel').textContent = '第 ' + (i + 1) + ' / ' + total + ' 段';
+  });
+  $('seek').addEventListener('change', function () {
+    var wasPlaying = !audio.paused;
+    setSegment(parseInt(this.value, 10) || 0, wasPlaying).catch(function (e) { toast(e.message); });
+  });
+  $('posRange').addEventListener('input', function () { draggingPos = true; $('posText').textContent = clock(this.value); });
+  $('posRange').addEventListener('change', function () {
+    audio.currentTime = parseFloat(this.value) || 0;
+    draggingPos = false;
+    save(true);
+  });
+  audio.addEventListener('loadedmetadata', function () {
+    if (pendingSeek > 0) {
+      try { audio.currentTime = Math.min(pendingSeek, audio.duration || pendingSeek); } catch (e) { /* ignore */ }
+      pendingSeek = 0;
+    }
+    updatePos();
+    updateUI();
+  });
+  audio.addEventListener('timeupdate', function () { updatePos(); save(false); });
+  audio.addEventListener('play', updateUI);
+  audio.addEventListener('pause', function () { updateUI(); save(true); });
+  audio.addEventListener('ended', function () { next(true); });
+  audio.addEventListener('error', function () {
+    if (audio.error) toast('音频加载失败，稍后重试');
+  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(true); });
+  window.addEventListener('pagehide', function () { save(true); });
+  $('tokenBtn').addEventListener('click', function () {
+    var value = ($('tokenInput').value || '').trim();
+    if (!value) return;
+    try { localStorage.setItem('pv-token', value); } catch (e) { /* ignore */ }
+    location.replace(location.pathname + '?t=' + encodeURIComponent(value));
+  });
+
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.setActionHandler('play', function () { play().catch(function () {}); });
+      navigator.mediaSession.setActionHandler('pause', function () { audio.pause(); save(true); });
+      navigator.mediaSession.setActionHandler('nexttrack', function () { next(true); });
+      navigator.mediaSession.setActionHandler('previoustrack', prev);
+    } catch (e) { /* ignore */ }
+  }
+
+  loadBooks().catch(function (err) {
+    setStatus('加载失败');
+    toast(err.message);
+    if (/401|token/.test(err.message)) showToken();
+  });
+})();
+</script>
+</body>
+</html>

@@ -11,8 +11,6 @@ public sealed class MiniMaxTtsService
 {
     private const string BaseUrl = "https://api.minimax.cn/v1";
     private const string TtsPath = "/t2a_v2";
-    private const string LocalApiKeyFileName = "MiniMax.ApiKey.local.txt";
-    private const string DeveloperFallbackApiKey = "";
 
     private static readonly JsonSerializerOptions JsonOptions =
         new(JsonSerializerDefaults.Web);
@@ -46,7 +44,7 @@ public sealed class MiniMaxTtsService
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new InvalidOperationException(
-                "MiniMax API key is not set. Set MINIMAX_API_KEY, put it in MiniMax.ApiKey.local.txt, or fill DeveloperFallbackApiKey.");
+                "MINIMAX_API_KEY environment variable is not set.");
         }
 
         // 防御性二次清洗(虽然调用方已经过滤过 think)
@@ -150,39 +148,7 @@ public sealed class MiniMaxTtsService
     private static string? ResolveApiKey()
     {
         var env = Environment.GetEnvironmentVariable("MINIMAX_API_KEY");
-        if (!string.IsNullOrWhiteSpace(env))
-        {
-            return env.Trim();
-        }
-
-        var localPath = ResolveLocalApiKeyPath();
-        if (File.Exists(localPath))
-        {
-            var key = File.ReadAllText(localPath).Trim();
-            if (!string.IsNullOrWhiteSpace(key))
-            {
-                return key;
-            }
-        }
-
-        return string.IsNullOrWhiteSpace(DeveloperFallbackApiKey)
-            ? null
-            : DeveloperFallbackApiKey.Trim();
-    }
-
-    private static string ResolveLocalApiKeyPath()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            var csproj = Path.Combine(dir.FullName, "AIAssistant.Host.Wpf.csproj");
-            if (File.Exists(csproj))
-            {
-                return Path.Combine(dir.FullName, LocalApiKeyFileName);
-            }
-            dir = dir.Parent;
-        }
-        return Path.Combine(AppContext.BaseDirectory, LocalApiKeyFileName);
+        return string.IsNullOrWhiteSpace(env) ? null : env.Trim();
     }
 
     private string ResolveOutputDirectory()
