@@ -55,6 +55,7 @@ internal static class Program
         TestEncodings();
         TestMinimalEpub();
         TestLongSentence();
+        TestPrefixedChapterTitles();
         TestSegmentEdges();
         TestSegmentSpeed();
         TestParserErrors();
@@ -188,6 +189,43 @@ internal static class Program
         Expect(chapter0.Count >= 3, "逗号长句被切开", chapter0.Count.ToString());
         Expect(chapter1.Count == 4, "无标点硬切 4 段", chapter1.Count.ToString());
         Expect(string.Concat(chapter1.Select(segment => segment.Text)) == hard, "硬切拼接等于原文", chapter1.Count.ToString());
+    }
+
+    private static void TestPrefixedChapterTitles()
+    {
+        // 网上 txt 的两种常见排版：序号前缀「1.第1章 …」，正文标签「正文 第一章 … 字数:5691」
+        var path = Path.Combine(_temp, "prefixed.txt");
+        File.WriteAllText(
+            path,
+            "书名页\n" +
+            "1.第1章 序幕\n" +
+            "开篇内容。\n" +
+            "2.第2章 布兰\n" +
+            "布兰醒来。\n" +
+            "正文 第一卷 秋暮之巨龙 序章 字数:5691\n" +
+            "祷文内容。\n" +
+            "正文 第一章 老友重聚 字数:7363\n" +
+            "正文第一章的内容不该被当成标题。\n" +
+            "3、第3章 凯特琳\n" +
+            "末章内容。\n",
+            new UTF8Encoding(false));
+
+        var book = BookParser.Parse(path);
+        var titles = string.Join(" | ", book.Chapters.Select(chapter => chapter.Title));
+        Expect(book.Chapters.Count == 6, "带前缀标题章数", titles);
+        if (book.Chapters.Count == 6)
+        {
+            Expect(book.Chapters[0].Title == "前言" && book.Chapters[0].Text.Contains("书名页"), "带前缀前的前言", book.Chapters[0].Title);
+            Expect(book.Chapters[1].Title == "第1章 序幕", "序号前缀标题", book.Chapters[1].Title);
+            Expect(book.Chapters[2].Title == "第2章 布兰", "序号前缀第二例", book.Chapters[2].Title);
+            Expect(book.Chapters[3].Title == "第一卷 秋暮之巨龙 序章", "正文标签+字数尾", book.Chapters[3].Title);
+            Expect(book.Chapters[4].Title == "第一章 老友重聚", "正文标签标题", book.Chapters[4].Title);
+            Expect(book.Chapters[4].Text.Contains("正文第一章的内容不该被当成标题"), "正文句不被吞", book.Chapters[4].Text);
+            Expect(book.Chapters[5].Title == "第3章 凯特琳", "顿号前缀标题", book.Chapters[5].Title);
+        }
+
+        var segments = BookSegmenter.Segment(book);
+        ExpectSegmentRules(book, segments, "带前缀标题不丢字");
     }
 
     private static void TestSegmentEdges()

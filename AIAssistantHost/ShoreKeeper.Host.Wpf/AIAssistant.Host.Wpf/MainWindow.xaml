@@ -4,8 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="AIAssistant Host" Height="600" Width="900"
-        MinHeight="500" MinWidth="760">
+        Title="AIAssistant Host" Height="620" Width="920"
+        MinHeight="520" MinWidth="820"
+        FontFamily="Segoe UI, Microsoft YaHei UI" FontSize="13">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -14,33 +15,36 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Padding="12" Background="#F5F7FA" BorderBrush="#D8DEE8" BorderThickness="1" CornerRadius="6">
+        <!-- 顶部：消息端口 + 听书入口 -->
+        <Border Grid.Row="0" Padding="14,10" Background="#F5F7FA" BorderBrush="#D8DEE8" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Port" Margin="0,0,8,0" />
-                <TextBox x:Name="PortTextBox" Grid.Column="1" Height="30" Text="47621" VerticalContentAlignment="Center" />
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Port" Margin="0,0,8,0" Foreground="#374151" />
+                <TextBox x:Name="PortTextBox" Grid.Column="1" Width="90" Height="30" Text="47621" VerticalContentAlignment="Center" />
                 <Button x:Name="StartButton" Grid.Column="2" Width="88" Height="30" Margin="12,0,0,0" Click="StartButton_Click" Content="Start" />
                 <Button x:Name="StopButton" Grid.Column="3" Width="88" Height="30" Margin="8,0,0,0" Click="StopButton_Click" Content="Stop" IsEnabled="False" />
-                <Button x:Name="ReadingButton" Grid.Column="4" Width="96" Height="30" Margin="12,0,12,0" HorizontalAlignment="Right" Click="ReadingButton_Click" Content="AI 听书" />
-                <TextBlock x:Name="StatusTextBlock" Grid.Column="5" VerticalAlignment="Center" Text="Stopped" Foreground="#6B7280" />
+                <Button x:Name="ReadingButton" Grid.Column="5" Width="104" Height="30" Margin="0,0,14,0" Padding="0"
+                        Click="ReadingButton_Click" Content="AI 听书"
+                        Background="#2563EB" Foreground="White" BorderBrush="#1D4ED8" FontWeight="SemiBold" />
+                <TextBlock x:Name="StatusTextBlock" Grid.Column="6" MinWidth="150" VerticalAlignment="Center"
+                           Text="Stopped" Foreground="#6B7280" />
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Margin="0,12,0,0" Padding="12" Background="#FAFAFB" BorderBrush="#D8DEE8" BorderThickness="1" CornerRadius="6">
+        <!-- 录音 / 转写 / 音色 -->
+        <GroupBox Grid.Row="1" Margin="0,12,0,0" Padding="14,10,14,12" Header="录音 · 转写 · 音色">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="72" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
@@ -48,49 +52,84 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Button x:Name="RecordButton" Grid.Row="0" Grid.Column="0" Width="104" Height="32" Click="RecordButton_Click" Content="Record" />
-                <Button x:Name="StopRecordButton" Grid.Row="0" Grid.Column="1" Width="104" Height="32" Margin="8,0,0,0" Click="StopRecordButton_Click" Content="Stop Rec" IsEnabled="False" />
-                <ComboBox x:Name="TranscriptionProviderComboBox" Grid.Row="0" Grid.Column="2" Width="128" Height="32" Margin="8,0,0,0" SelectedIndex="0">
-                    <ComboBoxItem Content="Local Whisper" />
-                    <ComboBoxItem Content="OpenAI" />
-                </ComboBox>
-                <Button x:Name="TranscribeButton" Grid.Row="0" Grid.Column="3" Width="124" Height="32" Margin="8,0,0,0" Click="TranscribeButton_Click" Content="Transcribe Last" IsEnabled="False" />
-                <TextBlock x:Name="RecordingStatusTextBlock" Grid.Row="0" Grid.Column="4" Margin="12,0,0,0" VerticalAlignment="Center" Text="Recorder idle" Foreground="#6B7280" />
-
-                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,8,0,0">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="录音" TextAlignment="Right" VerticalAlignment="Center"
+                           Margin="0,0,10,0" Foreground="#374151" />
+                <Grid Grid.Row="0" Grid.Column="1">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="RecordingsFolderTextBlock" Grid.Column="0" TextWrapping="Wrap" />
-                    <CheckBox x:Name="UseMediumModelCheckBox" Grid.Column="1" Content="Use medium model (slower, better)" Margin="12,0,0,0" VerticalAlignment="Center" />
+                    <Button x:Name="RecordButton" Grid.Column="0" Width="104" Height="32" Click="RecordButton_Click" Content="Record" />
+                    <Button x:Name="StopRecordButton" Grid.Column="1" Width="104" Height="32" Margin="8,0,0,0" Click="StopRecordButton_Click" Content="Stop Rec" IsEnabled="False" />
+                    <TextBlock x:Name="RecordingStatusTextBlock" Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center"
+                               Text="Recorder idle" Foreground="#6B7280" TextTrimming="CharacterEllipsis" />
                 </Grid>
 
-                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" Orientation="Horizontal" Margin="0,8,0,0">
-                    <TextBlock Text="Voice:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox x:Name="VoiceComboBox" Width="200" SelectionChanged="VoiceComboBox_SelectionChanged">
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="转写" TextAlignment="Right" VerticalAlignment="Center"
+                           Margin="0,0,10,0" Foreground="#374151" />
+                <Grid Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ComboBox x:Name="TranscriptionProviderComboBox" Grid.Column="0" Width="140" Height="32" VerticalContentAlignment="Center" SelectedIndex="0">
+                        <ComboBoxItem Content="Local Whisper" />
+                        <ComboBoxItem Content="OpenAI" />
+                    </ComboBox>
+                    <Button x:Name="TranscribeButton" Grid.Column="1" Width="124" Height="32" Margin="8,0,0,0" Click="TranscribeButton_Click" Content="Transcribe Last" IsEnabled="False" />
+                    <CheckBox x:Name="UseMediumModelCheckBox" Grid.Column="2" Content="Use medium model (slower, better)"
+                              Margin="16,0,0,0" VerticalAlignment="Center" VerticalContentAlignment="Center" />
+                </Grid>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="音色" TextAlignment="Right" VerticalAlignment="Center"
+                           Margin="0,0,10,0" Foreground="#374151" />
+                <Grid Grid.Row="2" Grid.Column="1" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ComboBox x:Name="VoiceComboBox" Grid.Column="0" Width="240" Height="32" VerticalContentAlignment="Center" SelectionChanged="VoiceComboBox_SelectionChanged">
                         <ComboBoxItem Content="danya_xuejie (淡雅学姐 - 清冷)"/>
                         <ComboBoxItem Content="Chinese (Mandarin)_Crisp_Girl (清脆少女)"/>
                         <ComboBoxItem Content="female-yujie (御姐)"/>
                         <ComboBoxItem Content="Chinese (Mandarin)_Gentle_Senior (温柔学姐)"/>
                         <ComboBoxItem Content="Chinese (Mandarin)_Soft_Girl (柔和少女)"/>
                         <ComboBoxItem Content="male-qn-qingse (青涩青年 - 男声)"/>
+                        <ComboBoxItem Content="shouanren_reading_01 (守岸人 - 朗读复刻)"/>
                         <ComboBoxItem Content="Custom..."/>
                     </ComboBox>
-                    <TextBlock Text="Clone voice_id:" VerticalAlignment="Center" Margin="12,0,6,0"/>
-                    <TextBox x:Name="CustomVoiceIdTextBox" Width="180" VerticalAlignment="Center" Text="my_voice_001"/>
-                    <Button x:Name="CloneVoiceButton" Content="Clone from file..." Margin="6,0,0,0" Padding="8,2" Click="CloneVoiceButton_Click"/>
-                    <TextBlock x:Name="VoiceStatusTextBlock" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#666"/>
-                </StackPanel>
+                    <TextBlock Grid.Column="1" Text="voice_id" VerticalAlignment="Center" Margin="12,0,6,0" Foreground="#6B7280" />
+                    <TextBox x:Name="CustomVoiceIdTextBox" Grid.Column="2" Width="170" Height="32" VerticalContentAlignment="Center"
+                             Text="my_voice_001"
+                             LostFocus="CustomVoiceIdTextBox_LostFocus"
+                             KeyDown="CustomVoiceIdTextBox_KeyDown" />
+                    <Button x:Name="CloneVoiceButton" Grid.Column="3" Content="Clone from file..." Margin="8,0,0,0" Height="32" Padding="10,0" Click="CloneVoiceButton_Click" />
+                    <TextBlock x:Name="VoiceStatusTextBlock" Grid.Column="4" VerticalAlignment="Center" Margin="12,0,0,0"
+                               Foreground="#6B7280" TextTrimming="CharacterEllipsis" />
+                </Grid>
 
-                <TextBox x:Name="TranscriptTextBox" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="5" Height="70" Margin="0,8,0,0"
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="音频目录" TextAlignment="Right" VerticalAlignment="Center"
+                           Margin="0,0,10,0" Foreground="#374151" />
+                <TextBlock x:Name="RecordingsFolderTextBlock" Grid.Row="3" Grid.Column="1" Margin="0,10,0,0"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="#6B7280" />
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="转录原文" TextAlignment="Right" VerticalAlignment="Top"
+                           Margin="0,14,10,0" Foreground="#374151" />
+                <TextBox x:Name="TranscriptTextBox" Grid.Row="4" Grid.Column="1" Height="64" Margin="0,10,0,0"
                          AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                          Text="Transcript will appear here." />
             </Grid>
-        </Border>
+        </GroupBox>
 
+        <!-- 消息 / 日志 -->
         <Grid Grid.Row="2" Margin="0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*" />
@@ -104,7 +143,7 @@
 
             <GroupBox Grid.Column="2" Header="Logs">
                 <DockPanel>
-                    <Button DockPanel.Dock="Top" HorizontalAlignment="Right" Width="80" Height="26" Margin="0,0,0,6" Click="ClearLogsButton_Click" Content="Clear Logs" />
+                    <Button DockPanel.Dock="Top" HorizontalAlignment="Right" Width="88" Height="26" Margin="0,0,0,6" Click="ClearLogsButton_Click" Content="Clear Logs" />
                     <TextBox x:Name="LogsTextBox" BorderThickness="0" IsReadOnly="True" AcceptsReturn="True"
                              TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
                 </DockPanel>

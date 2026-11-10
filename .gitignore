@@ -78,3 +78,6 @@ launchSettings.json
 
 # 本地测试书（体积大、版权内容，不提交）
 /AIAssistantHost/ShoreKeeper.Host.Wpf/AIAssistant.Host.Wpf/Book/
+
+# 音色复刻素材（个人录音，体积大，不提交）
+/AIAssistantHost/ShoreKeeper.Host.Wpf/AIAssistant.Host.Wpf/AudioSource/

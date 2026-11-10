@@ -53,6 +53,11 @@ public static class BookParser
         @"<title\b[^>]*>(.*?)</title>",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
 
+    /// <summary>章节标题尾部的「字数:5691」，网上 txt 常见，展示时应去掉。</summary>
+    private static readonly Regex WordCountSuffixRegex = new(
+        @"\s*字数\s*[:：]\s*\d+\s*$",
+        RegexOptions.Compiled);
+
     static BookParser()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -212,7 +217,110 @@ public static class BookParser
             return false;
         }
 
-        return IsEnglishChapter(line) || IsChineseChapter(line);
+        return IsEnglishChapter(line) || IsChineseChapter(line) || IsPrefixedChapter(line);
+    }
+
+    /// <summary>
+    /// 带前缀的标题行。网上 txt 常见「1.第1章 序幕」和「正文 第一章 老友重聚 字数:5691」
+    /// 两种排版，裸「第X章」规则覆盖不到，整本书会塌成「正文」一章。
+    /// </summary>
+    private static bool IsPrefixedChapter(ReadOnlySpan<char> line)
+    {
+        var stripped = StripTitlePrefix(line);
+        if (stripped.Length == 0 || stripped.Length == line.Length)
+        {
+            return false;
+        }
+
+        return IsChineseChapter(stripped) || IsEnglishChapter(stripped);
+    }
+
+    /// <summary>
+    /// 去掉标题行前面的序号（「1.」「2、」）与「正文」标签，剩余部分原样返回。
+    /// 没有前缀时原样返回，调用方可用长度是否变化判断有没有剥到。
+    /// </summary>
+    private static ReadOnlySpan<char> StripTitlePrefix(ReadOnlySpan<char> line)
+    {
+        var span = line;
+        for (var guard = 0; guard < 4; guard++)
+        {
+            ReadOnlySpan<char> next;
+            if (TryStripOrdinalPrefix(span, out var afterOrdinal))
+            {
+                next = afterOrdinal;
+            }
+            else if (TryStripBodyLabel(span, out var afterLabel))
+            {
+                next = afterLabel;
+            }
+            else
+            {
+                break;
+            }
+
+            if (next.Length == span.Length)
+            {
+                break;
+            }
+
+            span = next;
+        }
+
+        return span;
+    }
+
+    private static bool TryStripOrdinalPrefix(ReadOnlySpan<char> line, out ReadOnlySpan<char> rest)
+    {
+        rest = line;
+        var digits = 0;
+        while (digits < line.Length && digits < 4 && line[digits] is >= '0' and <= '9')
+        {
+            digits++;
+        }
+
+        if (digits == 0 || digits >= line.Length || line[digits] is not ('.' or '、' or '．'))
+        {
+            return false;
+        }
+
+        var i = digits + 1;
+        while (i < line.Length && char.IsWhiteSpace(line[i]))
+        {
+            i++;
+        }
+
+        if (i >= line.Length)
+        {
+            return false;
+        }
+
+        rest = line.Slice(i);
+        return true;
+    }
+
+    private static bool TryStripBodyLabel(ReadOnlySpan<char> line, out ReadOnlySpan<char> rest)
+    {
+        const string label = "正文";
+        rest = line;
+        if (!line.StartsWith(label, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var i = label.Length;
+        while (i < line.Length && (char.IsWhiteSpace(line[i]) || line[i] is '：' or ':' or '·' or '\u3000'))
+        {
+            i++;
+        }
+
+        // 「正文」后面必须跟分隔符，避免把「正文第一章讲了…」这类正文句子当成标题
+        if (i == label.Length || i >= line.Length)
+        {
+            return false;
+        }
+
+        rest = line.Slice(i);
+        return true;
     }
 
     private static bool IsEnglishChapter(ReadOnlySpan<char> line)
@@ -283,12 +391,19 @@ public static class BookParser
 
     private static string MakeTitle(ReadOnlySpan<char> line)
     {
-        if (line.Length <= MaxTitleLength)
+        var span = TrimSpan(StripTitlePrefix(line));
+        var text = WordCountSuffixRegex.Replace(span.ToString(), string.Empty).Trim();
+        if (text.Length == 0)
         {
-            return line.ToString();
+            text = TrimSpan(line).ToString();
         }
 
-        return line.Slice(0, MaxTitleLength).ToString();
+        if (text.Length <= MaxTitleLength)
+        {
+            return text;
+        }
+
+        return text.Substring(0, MaxTitleLength);
     }
 
     private static Book ParseEpub(string filePath, byte[] bytes, CancellationToken cancellationToken)

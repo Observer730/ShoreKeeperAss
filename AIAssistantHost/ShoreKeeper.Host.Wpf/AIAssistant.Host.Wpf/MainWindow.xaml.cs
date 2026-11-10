@@ -33,7 +33,8 @@ namespace AIAssistant.Host.Wpf
             _recorder.LogReceived += OnLogReceived;
             _recorder.RecordingStopped += OnRecordingStopped;
             _ttsService.OutputDirectory = System.IO.Path.Combine(_recorder.RecordingsDirectory, "TTS");
-            RecordingsFolderTextBlock.Text = $"Folder: {_recorder.RecordingsDirectory}";
+            RecordingsFolderTextBlock.Text = _recorder.RecordingsDirectory;
+            RecordingsFolderTextBlock.ToolTip = _recorder.RecordingsDirectory;
             Closed += MainWindow_Closed;
             VoiceStatusTextBlock.Text = $"当前 voice: {_ttsService.VoiceId}";
             CustomVoiceIdTextBox.IsEnabled = false;  // 默认非 Custom,禁用
@@ -354,16 +355,6 @@ namespace AIAssistant.Host.Wpf
             });
         }
 
-        private static readonly string[] VoiceDisplayNames = new[]
-        {
-            "danya_xuejie",
-            "Chinese (Mandarin)_Crisp_Girl",
-            "female-yujie",
-            "Chinese (Mandarin)_Gentle_Senior",
-            "Chinese (Mandarin)_Soft_Girl",
-            "male-qn-qingse",
-        };
-
         private void VoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (VoiceComboBox == null) return;  // 初始化时为 null
@@ -378,21 +369,79 @@ namespace AIAssistant.Host.Wpf
             if (voiceId == "Custom...")
             {
                 CustomVoiceIdTextBox.IsEnabled = true;
-                voiceId = CustomVoiceIdTextBox.Text?.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(voiceId))
+                if (string.IsNullOrWhiteSpace(CustomVoiceIdTextBox.Text))
                 {
                     AddLog("[Voice] Custom voice_id is empty. Fill the textbox first.");
                     return;
                 }
-            }
-            else
-            {
-                CustomVoiceIdTextBox.IsEnabled = false;
+
+                ApplyCustomVoice();
+                return;
             }
 
+            CustomVoiceIdTextBox.IsEnabled = false;
+            ApplyVoice(voiceId, cloned: false);
+        }
+
+        /// <summary>
+        /// 文本框改完不必再重选一次 Custom：失焦和回车都会把 voice_id 应用上去。
+        /// </summary>
+        private void CustomVoiceIdTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            ApplyCustomVoiceFromText();
+        }
+
+        private void CustomVoiceIdTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key is Key.Enter or Key.Return)
+            {
+                ApplyCustomVoiceFromText();
+                e.Handled = true;
+            }
+        }
+
+        private void ApplyCustomVoiceFromText()
+        {
+            if (VoiceComboBox?.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+            if (!string.Equals((item.Content?.ToString() ?? string.Empty).Trim(), "Custom...", StringComparison.Ordinal)) return;
+            ApplyCustomVoice();
+        }
+
+        private void ApplyCustomVoice()
+        {
+            var voiceId = CustomVoiceIdTextBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(voiceId))
+            {
+                AddLog("[Voice] Custom voice_id is empty. Fill the textbox first.");
+                return;
+            }
+
+            ApplyVoice(voiceId, cloned: false);
+        }
+
+        /// <summary>
+        /// 统一的落点：更新 TTS、状态文字，并把音色同步给已在运行的听书服务（不用再点一次「AI 听书」）。
+        /// </summary>
+        private void ApplyVoice(string voiceId, bool cloned)
+        {
+            if (string.IsNullOrWhiteSpace(voiceId))
+            {
+                return;
+            }
+
+            var changed = !string.Equals(_ttsService.VoiceId, voiceId, StringComparison.Ordinal);
             _ttsService.VoiceId = voiceId;
-            VoiceStatusTextBlock.Text = $"当前 voice: {voiceId}";
-            AddLog($"[Voice] → {voiceId}");
+            if (_readingService is not null)
+            {
+                _readingService.VoiceId = voiceId;
+            }
+
+            VoiceStatusTextBlock.Text = cloned ? $"当前 voice: {voiceId} (复刻)" : $"当前 voice: {voiceId}";
+            VoiceStatusTextBlock.ToolTip = VoiceStatusTextBlock.Text;
+            if (changed)
+            {
+                AddLog($"[Voice] → {voiceId}");
+            }
         }
 
         private async void CloneVoiceButton_Click(object sender, RoutedEventArgs e)
@@ -428,10 +477,16 @@ namespace AIAssistant.Host.Wpf
                 var newVoiceId = await cloneService.CloneFromFileAsync(dlg.FileName, customId);
                 AddLog($"[Clone] 成功:voice_id = {newVoiceId}");
 
-                _ttsService.VoiceId = newVoiceId;
-                VoiceStatusTextBlock.Text = $"当前 voice: {newVoiceId} (复刻)";
-                VoiceComboBox.SelectedIndex = -1;  // 让 ComboBox 不显示任何项,TextBox 控制
-                AddLog($"[Clone] 已切到复刻 voice。下次 M3 回复就会用它。");
+                // 把新音色落到文本框并选中「Custom...」，界面状态和实际音色保持一致
+                CustomVoiceIdTextBox.Text = newVoiceId;
+                var customIndex = VoiceComboBox.Items.Count - 1;
+                if (customIndex >= 0)
+                {
+                    VoiceComboBox.SelectedIndex = customIndex;
+                }
+
+                ApplyVoice(newVoiceId, cloned: true);
+                AddLog($"[Clone] 已切到复刻 voice。下次合成就会用它。");
             }
             catch (MiniMaxServiceException ex)
             {
