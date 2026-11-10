@@ -486,7 +486,13 @@ public sealed class ReadingHttpServer : IAsyncDisposable
         string audioPath;
         try
         {
-            audioPath = await _catalog.EnsureSegmentAudioAsync(bookId, segmentIndex, cancellationToken)
+            // 手机端可以把合成语速带上来（?speed=0.9），这样慢速是 TTS 读慢而不是变速播放。
+            var requestedSpeed = ParseDouble(request.Query, "speed");
+            audioPath = await _catalog.EnsureSegmentAudioAsync(
+                    bookId,
+                    segmentIndex,
+                    requestedSpeed > 0 ? requestedSpeed : (double?)null,
+                    cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -873,6 +879,15 @@ public sealed class ReadingHttpServer : IAsyncDisposable
             && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value
             : fallback;
+    }
+
+    private static double ParseDouble(Dictionary<string, string> query, string key)
+    {
+        return query.TryGetValue(key, out var text)
+            && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            && !double.IsNaN(value)
+            ? value
+            : 0;
     }
 
     private static bool TryParseRange(string value, long total, out long start, out long end)

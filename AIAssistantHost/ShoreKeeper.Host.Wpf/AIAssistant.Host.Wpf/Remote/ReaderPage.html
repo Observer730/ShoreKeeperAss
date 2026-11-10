@@ -61,8 +61,11 @@
   </div>
   <div class="row" style="margin-top:12px">
     <select id="speedSel" aria-label="倍速">
-      <option value="0.75">0.75×</option>
-      <option value="1" selected>1.0×</option>
+      <option value="0.8">0.80× 稍慢</option>
+      <option value="0.85">0.85×</option>
+      <option value="0.9">0.90× 慢一点</option>
+      <option value="0.95">0.95×</option>
+      <option value="1" selected>1.00× 原速</option>
       <option value="1.25">1.25×</option>
       <option value="1.5">1.5×</option>
       <option value="2">2.0×</option>
@@ -148,10 +151,12 @@
     $('tokenBox').hidden = false;
   }
   function mediaUrl(i) {
-    return apiUrl('/media/' + encodeURIComponent(book.id) + '/' + i + '.mp3');
+    // 语速交给服务端合成（TTS 直接读慢/读快），播放端保持 1.0，避免变速移调的电音。
+    return apiUrl('/media/' + encodeURIComponent(book.id) + '/' + i + '.mp3', { speed: speed });
   }
   function nearestSpeed(value) {
-    var choices = [0.75, 1, 1.25, 1.5, 2];
+    if (!isFinite(value) || value <= 0) return 1;
+    var choices = [0.8, 0.85, 0.9, 0.95, 1, 1.25, 1.5, 2];
     var best = 1, dist = 1e9;
     choices.forEach(function (c) { var d = Math.abs(c - value); if (d < dist) { best = c; dist = d; } });
     return best;
@@ -237,7 +242,7 @@
       audio.src = mediaUrl(index);
       audio.load();
     }
-    audio.playbackRate = speed;
+    audio.playbackRate = 1;
     return audio.play().catch(function (err) {
       setStatus('播放被浏览器拦截，请再点一次播放');
       throw err;
@@ -250,7 +255,7 @@
     return loadWindow(index).then(function () {
       audio.setAttribute('data-index', String(index));
       audio.src = mediaUrl(index);
-      audio.playbackRate = speed;
+      audio.playbackRate = 1;
       audio.load();
       updateUI();
       if (autoplay) return play();
@@ -289,7 +294,7 @@
       index = p ? Math.max(0, Math.min(total - 1, p.segmentIndex | 0)) : 0;
       speed = p && p.speed ? nearestSpeed(p.speed) : 1;
       $('speedSel').value = String(speed);
-      audio.playbackRate = speed;
+      audio.playbackRate = 1;
       pendingSeek = p ? Math.max(0, p.positionSeconds || 0) : 0;
       $('seek').max = Math.max(0, total - 1);
       $('seek').value = String(index);
@@ -335,9 +340,20 @@
   });
   $('speedSel').addEventListener('change', function () {
     speed = parseFloat(this.value) || 1;
-    audio.playbackRate = speed;
+    // 语速变了要换一份音频：服务端按新语速合成，本段从头开始。
+    audio.playbackRate = 1;
     updateUI();
     save(true);
+    if (!book) return;
+    var wasPlaying = !audio.paused;
+    audio.setAttribute('data-index', String(index));
+    audio.src = mediaUrl(index);
+    audio.load();
+    if (wasPlaying) {
+      play().catch(function (e) { toast(e.message); });
+    } else {
+      setStatus('语速 ' + speed.toFixed(2).replace(/0$/, '') + '× 将在下一段生效');
+    }
   });
   $('playBtn').addEventListener('click', function () {
     if (audio.paused) {

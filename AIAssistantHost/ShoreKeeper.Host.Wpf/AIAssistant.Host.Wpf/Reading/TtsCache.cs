@@ -47,15 +47,17 @@ public sealed class TtsCache
     }
 
     /// <summary>
-    /// SHA256(UTF-8(bookId|segmentIndex|voiceId|text)) 的 64 位小写十六进制。
+    /// SHA256(UTF-8(bookId|segmentIndex|voiceId|speed|text)) 的 64 位小写十六进制。
+    /// 语速进 key：换语速后旧音频自动失效，不会被当成命中。
     /// </summary>
-    public static string ComputeCacheKey(string bookId, int segmentIndex, string voiceId, string text)
+    public static string ComputeCacheKey(string bookId, int segmentIndex, string voiceId, string text, double speechSpeed = 1.0)
     {
         RequireNonEmpty(bookId, nameof(bookId));
         RequireNonEmpty(voiceId, nameof(voiceId));
         RequireNonEmpty(text, nameof(text));
 
-        var raw = string.Concat(bookId, "|", IndexText(segmentIndex), "|", voiceId, "|", text);
+        var raw = string.Concat(
+            bookId, "|", IndexText(segmentIndex), "|", voiceId, "|", SpeedText(speechSpeed), "|", text);
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
@@ -63,9 +65,9 @@ public sealed class TtsCache
     /// <summary>
     /// mp3 与 sidecar key 都存在且 key 一致时返回 true。
     /// </summary>
-    public bool TryGetCached(string bookId, int segmentIndex, string voiceId, string text, out string path)
+    public bool TryGetCached(string bookId, int segmentIndex, string voiceId, string text, out string path, double speechSpeed = 1.0)
     {
-        var key = ComputeCacheKey(bookId, segmentIndex, voiceId, text);
+        var key = ComputeCacheKey(bookId, segmentIndex, voiceId, text, speechSpeed);
         var candidate = GetCachePath(bookId, segmentIndex);
         if (IsFresh(candidate, key))
         {
@@ -88,6 +90,7 @@ public sealed class TtsCache
         int segmentIndex,
         string voiceId,
         string text,
+        double speechSpeed,
         Func<string, string, CancellationToken, Task> synthesizeAsync,
         CancellationToken cancellationToken = default)
     {
@@ -96,7 +99,7 @@ public sealed class TtsCache
             throw new ArgumentNullException(nameof(synthesizeAsync));
         }
 
-        var key = ComputeCacheKey(bookId, segmentIndex, voiceId, text);
+        var key = ComputeCacheKey(bookId, segmentIndex, voiceId, text, speechSpeed);
         var path = GetCachePath(bookId, segmentIndex);
         var gate = _gates.GetOrAdd(path, static _ => new SemaphoreSlim(1, 1));
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -203,6 +206,9 @@ public sealed class TtsCache
 
     private static string IndexText(int segmentIndex) =>
         segmentIndex.ToString(CultureInfo.InvariantCulture);
+
+    private static string SpeedText(double speechSpeed) =>
+        (speechSpeed <= 0 ? 1.0 : speechSpeed).ToString("0.###", CultureInfo.InvariantCulture);
 
     private static void RequireNonEmpty(string value, string paramName)
     {

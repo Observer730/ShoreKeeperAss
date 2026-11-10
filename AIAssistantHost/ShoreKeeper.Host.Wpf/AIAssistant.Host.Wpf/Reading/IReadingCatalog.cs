@@ -20,6 +20,14 @@ public interface IReadingCatalog
     /// <summary>保存断点。</summary>
     void SaveProgress(ReadingProgress progress);
 
-    /// <summary>确保某段 mp3 已在缓存里，返回绝对路径；必要时触发 TTS。</summary>
-    Task<string> EnsureSegmentAudioAsync(string bookId, int segmentIndex, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// 确保某段 mp3 已在缓存里，返回绝对路径；必要时触发 TTS。
+    /// <paramref name="speechSpeed"/> 为 null 时用服务当前语速；手机端会带 <c>?speed=</c> 指定，
+    /// 这样慢速由 TTS 直接合成，不用播放端变速（不会出电音）。
+    /// </summary>
+    Task<string> EnsureSegmentAudioAsync(
+        string bookId,
+        int segmentIndex,
+        double? speechSpeed = null,
+        CancellationToken cancellationToken = default);
 }

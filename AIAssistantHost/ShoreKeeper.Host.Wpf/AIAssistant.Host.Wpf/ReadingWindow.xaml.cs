@@ -11,7 +11,8 @@ namespace AIAssistant.Host.Wpf;
 
 public partial class ReadingWindow : Window
 {
-    private static readonly string[] SpeedChoices = ["0.75", "1.0", "1.25", "1.5", "2.0"];
+    // 播放端只保留原速/加速档：慢速由主界面「语速」交给 TTS 读慢（播放端减速会移调出电音）。
+    private static readonly string[] SpeedChoices = ["1.0", "1.25", "1.5", "2.0"];
 
     private readonly ReadingService _service;
     private readonly DispatcherTimer _timer;
@@ -479,7 +480,7 @@ public partial class ReadingWindow : Window
 
     private void SelectSpeed(double speed)
     {
-        var best = SpeedChoices[1];
+        var best = SpeedChoices[0];
         var bestDistance = double.MaxValue;
         foreach (var choice in SpeedChoices)
         {

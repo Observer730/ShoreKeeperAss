@@ -32,8 +32,13 @@ public sealed class MiniMaxTtsService
 
     /// <summary>
     /// 合成指定文本,落 mp3 到 OutputDirectory,返回绝对路径。
+    /// <paramref name="speechSpeed"/> 为 null 时用 <see cref="Speed"/>；
+    /// 这是让 TTS 自己读慢/读快，而不是播放端变速，所以不会出现电音。
     /// </summary>
-    public async Task<string> SynthesizeAsync(string text, CancellationToken cancellationToken = default)
+    public async Task<string> SynthesizeAsync(
+        string text,
+        CancellationToken cancellationToken = default,
+        double? speechSpeed = null)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -62,7 +67,7 @@ public sealed class MiniMaxTtsService
             voice_setting = new
             {
                 voice_id = VoiceId,
-                speed = Speed,
+                speed = speechSpeed ?? Speed,
                 vol = Volume,
                 pitch = Pitch
             },

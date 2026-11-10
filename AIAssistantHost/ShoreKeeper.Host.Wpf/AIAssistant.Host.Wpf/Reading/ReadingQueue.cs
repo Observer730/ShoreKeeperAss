@@ -11,6 +11,7 @@ public sealed class ReadingQueue : IDisposable
     private readonly IReadingAudioSink _sink;
     private readonly ReadingProgressStore _progressStore;
     private readonly string _voiceId;
+    private readonly double _speechSpeed;
     private readonly SemaphoreSlim _mutex = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
 
@@ -28,7 +29,8 @@ public sealed class ReadingQueue : IDisposable
         Func<string, string, CancellationToken, Task> synthesizeAsync,
         IReadingAudioSink sink,
         ReadingProgressStore progressStore,
-        string voiceId)
+        string voiceId,
+        double speechSpeed = 1.0)
     {
         Book = book ?? throw new ArgumentNullException(nameof(book));
         Segments = segments ?? throw new ArgumentNullException(nameof(segments));
@@ -42,6 +44,7 @@ public sealed class ReadingQueue : IDisposable
         }
 
         _voiceId = voiceId.Trim();
+        _speechSpeed = speechSpeed <= 0 ? 1.0 : speechSpeed;
         _sink.PlaybackEnded += OnPlaybackEnded;
         _sink.PlaybackFailed += OnPlaybackFailed;
 
@@ -428,6 +431,7 @@ public sealed class ReadingQueue : IDisposable
             segment.SegmentIndex,
             _voiceId,
             segment.Text,
+            _speechSpeed,
             _synthesizeAsync,
             linked.Token).ConfigureAwait(false);
         linked.Token.ThrowIfCancellationRequested();
@@ -471,6 +475,7 @@ public sealed class ReadingQueue : IDisposable
                 segment.SegmentIndex,
                 _voiceId,
                 segment.Text,
+                _speechSpeed,
                 _synthesizeAsync,
                 cancellationToken).ConfigureAwait(false);
         }

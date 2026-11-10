@@ -92,6 +92,16 @@ internal static class Program
         Expect(bytes.Length == 1000, "media 1000 字节");
         Expect(res.Headers.AcceptRanges.Contains("bytes"), "Accept-Ranges: bytes");
         Expect(catalog.AudioCalls >= 1, "EnsureSegmentAudio 被调用");
+
+        // 手机端 ?speed= 要透传成合成语速（TTS 读慢），不能退化成播放端变速
+        var slow = await http.GetAsync($"/media/{BookId}/0.mp3?speed=0.9");
+        Expect(slow.StatusCode == HttpStatusCode.OK, "GET media?speed 200");
+        Expect(catalog.LastSpeechSpeed.HasValue && Math.Abs(catalog.LastSpeechSpeed.Value - 0.9) < 1e-9,
+            "speed 查询参数透传");
+
+        var noSpeed = await http.GetAsync($"/media/{BookId}/0.mp3");
+        Expect(noSpeed.StatusCode == HttpStatusCode.OK, "GET media 无 speed 200");
+        Expect(!catalog.LastSpeechSpeed.HasValue, "无 speed 时用服务默认语速");
     }
 
     private static async Task TestRangeAsync(HttpClient http)
@@ -251,6 +261,8 @@ internal static class Program
 
         public int AudioCalls { get; private set; }
 
+        public double? LastSpeechSpeed { get; private set; }
+
         public IReadOnlyList<BookInfo> ListBooks() => new[]
         {
             new BookInfo
@@ -307,8 +319,13 @@ internal static class Program
             Progress = progress;
         }
 
-        public Task<string> EnsureSegmentAudioAsync(string bookId, int segmentIndex, CancellationToken cancellationToken = default)
+        public Task<string> EnsureSegmentAudioAsync(
+            string bookId,
+            int segmentIndex,
+            double? speechSpeed = null,
+            CancellationToken cancellationToken = default)
         {
+            LastSpeechSpeed = speechSpeed;
             if (bookId != BookId || segmentIndex < 0 || segmentIndex >= _segments.Count)
             {
                 throw new ArgumentOutOfRangeException(nameof(segmentIndex));

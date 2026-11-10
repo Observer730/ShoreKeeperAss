@@ -325,7 +325,7 @@ internal static class Program
         Expect(cache.GetCachePath("book1", 3) == Path.Combine(cache.RootDirectory, "book1", "3.mp3"), "缓存路径", cache.GetCachePath("book1", 3));
 
         var key = TtsCache.ComputeCacheKey("book", 0, "voice", "你好");
-        var manual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("book|0|voice|你好"))).ToLowerInvariant();
+        var manual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("book|0|voice|1|你好"))).ToLowerInvariant();
         Expect(key.Length == 64 && IsLowerHex(key) && key == manual, "缓存 key", key);
         ExpectThrows<ArgumentException>(() => TtsCache.ComputeCacheKey("", 0, "voice", "你好"), "空 bookId");
         ExpectThrows<ArgumentException>(() => TtsCache.ComputeCacheKey("book", 0, " ", "你好"), "空 voiceId");
@@ -348,8 +348,8 @@ internal static class Program
             return File.WriteAllBytesAsync(destination, new byte[] { 0x49, 0x44, 0x33 }, cancellationToken);
         }
 
-        var first = await cache.GetOrCreateAsync("book", 0, "voiceA", "你好", Synthesize);
-        var second = await cache.GetOrCreateAsync("book", 0, "voiceA", "你好", Synthesize);
+        var first = await cache.GetOrCreateAsync("book", 0, "voiceA", "你好", 1.0, Synthesize);
+        var second = await cache.GetOrCreateAsync("book", 0, "voiceA", "你好", 1.0, Synthesize);
         Expect(calls == 1, "第二次不再合成", calls.ToString());
         Expect(first == second && new FileInfo(first).Length == 3, "命中后文件仍是 3 字节", first);
         Expect(File.ReadAllText(Path.ChangeExtension(first, ".key")).Trim() == TtsCache.ComputeCacheKey("book", 0, "voiceA", "你好"), "sidecar key", "");
@@ -365,11 +365,19 @@ internal static class Program
         Expect(afterRepeat.Contains("[Cache] miss", StringComparison.Ordinal), "首次 miss 日志", afterRepeat);
         Expect(afterRepeat.Contains("[Cache] hit", StringComparison.Ordinal), "再次 hit 日志", afterRepeat);
 
-        await cache.GetOrCreateAsync("book", 0, "voiceB", "你好", Synthesize);
+        await cache.GetOrCreateAsync("book", 0, "voiceB", "你好", 1.0, Synthesize);
         Expect(calls == 2, "换 voiceId 重新合成", calls.ToString());
         Expect(File.ReadAllText(Path.ChangeExtension(first, ".key")).Trim() == TtsCache.ComputeCacheKey("book", 0, "voiceB", "你好"), "新音色 key", "");
-        await cache.GetOrCreateAsync("book", 0, "voiceB", "你好", Synthesize);
+        await cache.GetOrCreateAsync("book", 0, "voiceB", "你好", 1.0, Synthesize);
         Expect(calls == 2, "新音色第二次命中", calls.ToString());
+
+        var slowKey = TtsCache.ComputeCacheKey("book", 0, "voiceB", "你好", 0.9);
+        Expect(slowKey != TtsCache.ComputeCacheKey("book", 0, "voiceB", "你好", 1.0), "语速进缓存 key", slowKey);
+        Expect(slowKey == TtsCache.ComputeCacheKey("book", 0, "voiceB", "你好", 0.90), "语速格式化稳定", slowKey);
+        await cache.GetOrCreateAsync("book", 0, "voiceB", "你好", 0.9, Synthesize);
+        Expect(calls == 3, "换语速重新合成", calls.ToString());
+        await cache.GetOrCreateAsync("book", 0, "voiceB", "你好", 0.9, Synthesize);
+        Expect(calls == 3, "同语速命中缓存", calls.ToString());
 
         var concurrentRoot = Path.Combine(_temp, "tts-concurrent");
         var concurrent = new TtsCache(concurrentRoot);
@@ -382,7 +390,7 @@ internal static class Program
         }
 
         var tasks = Enumerable.Range(0, 8)
-            .Select(_ => concurrent.GetOrCreateAsync("same", 4, "voice", "并发文本", ConcurrentSynth))
+            .Select(_ => concurrent.GetOrCreateAsync("same", 4, "voice", "并发文本", 1.0, ConcurrentSynth))
             .ToArray();
         var paths = await Task.WhenAll(tasks);
         Expect(concurrentCalls == 1, "8 路并发只合成 1 次", concurrentCalls.ToString());
@@ -395,7 +403,7 @@ internal static class Program
         failing.Log += message => failLogs.Add(message);
         try
         {
-            await failing.GetOrCreateAsync("book", 1, "voice", "会失败", (_, destination, _) =>
+            await failing.GetOrCreateAsync("book", 1, "voice", "会失败", 1.0, (_, destination, _) =>
             {
                 File.WriteAllBytes(destination, new byte[] { 9 });
                 throw new InvalidOperationException("boom");

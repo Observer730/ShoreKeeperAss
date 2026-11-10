@@ -92,9 +92,9 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <ComboBox x:Name="VoiceComboBox" Grid.Column="0" Width="240" Height="32" VerticalContentAlignment="Center" SelectionChanged="VoiceComboBox_SelectionChanged">
                         <ComboBoxItem Content="danya_xuejie (淡雅学姐 - 清冷)"/>
@@ -114,6 +114,16 @@
                     <Button x:Name="CloneVoiceButton" Grid.Column="3" Content="Clone from file..." Margin="8,0,0,0" Height="32" Padding="10,0" Click="CloneVoiceButton_Click" />
                     <TextBlock x:Name="VoiceStatusTextBlock" Grid.Column="4" VerticalAlignment="Center" Margin="12,0,0,0"
                                Foreground="#6B7280" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="5" Text="语速" VerticalAlignment="Center" Margin="16,0,6,0" Foreground="#374151" />
+                    <ComboBox x:Name="ReadingSpeedComboBox" Grid.Column="6" Width="112" Height="32"
+                              VerticalContentAlignment="Center" SelectionChanged="ReadingSpeedComboBox_SelectionChanged"
+                              ToolTip="朗读合成语速：调慢由 TTS 直接读慢，不是变速播放，不会出电音">
+                        <ComboBoxItem Content="0.85× (更慢)"/>
+                        <ComboBoxItem Content="0.90× (慢一点)"/>
+                        <ComboBoxItem Content="0.95×"/>
+                        <ComboBoxItem Content="1.00× (原速)"/>
+                        <ComboBoxItem Content="1.10× (快一点)"/>
+                    </ComboBox>
                 </Grid>
 
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="音频目录" TextAlignment="Right" VerticalAlignment="Center"

@@ -13,6 +13,7 @@ public sealed class ReadingService : IDisposable, IReadingCatalog
     private ReadingQueue? _queue;
     private NAudioReadingSink? _sink;
     private string _voiceId;
+    private double _speechSpeed = 1.0;
     private int _disposed;
 
     public ReadingService(string projectDirectory, string recordingsDirectory, string voiceId)
@@ -62,6 +63,16 @@ public sealed class ReadingService : IDisposable, IReadingCatalog
             _voiceId = value.Trim();
             _tts.VoiceId = _voiceId;
         }
+    }
+
+    /// <summary>
+    /// 朗读合成语速（0.5–2.0，默认 1.0）。这是让 TTS 直接读快/读慢，
+    /// 不是播放端变速，因此不会有变速产生的电音。语速进缓存 key，换值后相关段会重新合成。
+    /// </summary>
+    public double SpeechSpeed
+    {
+        get => _speechSpeed;
+        set => _speechSpeed = ClampSpeechSpeed(value);
     }
 
     public event Action<string>? Log;
@@ -124,7 +135,8 @@ public sealed class ReadingService : IDisposable, IReadingCatalog
                 SynthesizeToDestinationAsync,
                 sink,
                 ProgressStore,
-                VoiceId);
+                VoiceId,
+                SpeechSpeed);
             queue.Log += OnLog;
 
             ReadingQueue? previous;
@@ -165,7 +177,11 @@ public sealed class ReadingService : IDisposable, IReadingCatalog
         }
     }
 
-    public async Task<string> EnsureSegmentAudioAsync(string bookId, int segmentIndex, CancellationToken cancellationToken = default)
+    public async Task<string> EnsureSegmentAudioAsync(
+        string bookId,
+        int segmentIndex,
+        double? speechSpeed = null,
+        CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
         var book = await Library.GetBookAsync(bookId, cancellationToken).ConfigureAwait(false);
@@ -185,6 +201,7 @@ public sealed class ReadingService : IDisposable, IReadingCatalog
             throw new ArgumentOutOfRangeException(nameof(segmentIndex), "段序号不存在。");
         }
 
+        var speed = ClampSpeechSpeed(speechSpeed ?? SpeechSpeed);
         try
         {
             return await Cache.GetOrCreateAsync(
@@ -192,7 +209,8 @@ public sealed class ReadingService : IDisposable, IReadingCatalog
                 segment.SegmentIndex,
                 VoiceId,
                 segment.Text,
-                SynthesizeToDestinationAsync,
+                speed,
+                (text, destination, token) => SynthesizeAtSpeedAsync(text, destination, speed, token),
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -230,11 +248,16 @@ public sealed class ReadingService : IDisposable, IReadingCatalog
         sink?.Dispose();
     }
 
-    private async Task SynthesizeToDestinationAsync(string text, string destinationPath, CancellationToken cancellationToken)
+    private Task SynthesizeToDestinationAsync(string text, string destinationPath, CancellationToken cancellationToken)
+    {
+        return SynthesizeAtSpeedAsync(text, destinationPath, SpeechSpeed, cancellationToken);
+    }
+
+    private async Task SynthesizeAtSpeedAsync(string text, string destinationPath, double speechSpeed, CancellationToken cancellationToken)
     {
         try
         {
-            var produced = await _tts.SynthesizeAsync(text, cancellationToken).ConfigureAwait(false);
+            var produced = await _tts.SynthesizeAsync(text, cancellationToken, speechSpeed).ConfigureAwait(false);
             var directory = Path.GetDirectoryName(destinationPath);
             if (!string.IsNullOrEmpty(directory))
             {
@@ -267,5 +290,16 @@ public sealed class ReadingService : IDisposable, IReadingCatalog
         {
             throw new ObjectDisposedException(nameof(ReadingService));
         }
+    }
+
+    private static double ClampSpeechSpeed(double speed)
+    {
+        // MiniMax voice_setting.speed 的有效区间是 0.5–2.0
+        if (double.IsNaN(speed) || speed <= 0)
+        {
+            return 1.0;
+        }
+
+        return speed < 0.5 ? 0.5 : speed > 2.0 ? 2.0 : speed;
     }
 }

@@ -5,6 +5,7 @@ using AIAssistant.Host.Wpf.OpenAI;
 using AIAssistant.Host.Wpf.Reading;
 using AIAssistant.Host.Wpf.Remote;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 
@@ -49,12 +50,19 @@ namespace AIAssistant.Host.Wpf
                 VoiceComboBox.SelectedIndex = 0;
             }
 
+            // 语速默认 1.00×（第 3 项），初始化时不触发重合成
+            if (ReadingSpeedComboBox.Items.Count > 0 && ReadingSpeedComboBox.SelectedIndex < 0)
+            {
+                ReadingSpeedComboBox.SelectedIndex = 3;
+            }
+
             try
             {
                 var recordings = _recorder.RecordingsDirectory;
                 var projectDir = System.IO.Directory.GetParent(recordings)?.FullName ?? AppContext.BaseDirectory;
                 _readingService = new ReadingService(projectDir, recordings, _ttsService.VoiceId);
                 _readingService.Log += text => Dispatcher.Invoke(() => AddLog(text));
+                _readingService.SpeechSpeed = SelectedSpeechSpeed();
                 var port = int.TryParse(Environment.GetEnvironmentVariable("READING_HTTP_PORT"), out var p) ? p : 47630;
                 _readingServer = new ReadingHttpServer(_readingService, port);
                 _readingServer.Log += text =>
@@ -444,6 +452,33 @@ namespace AIAssistant.Host.Wpf
             }
         }
 
+        private void ReadingSpeedComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (ReadingSpeedComboBox is null) return;  // 初始化阶段可能还是 null
+
+            var speed = SelectedSpeechSpeed();
+            if (_readingService is not null)
+            {
+                _readingService.SpeechSpeed = speed;
+            }
+
+            AddLog($"[Reading] 合成语速 ×{speed:0.00}（由 TTS 直接读这个速度，不走变速播放）");
+        }
+
+        /// <summary>
+        /// 从「0.90× (慢一点)」这类项里取出前导倍速；解析不了就按原速。
+        /// </summary>
+        private double SelectedSpeechSpeed()
+        {
+            if (ReadingSpeedComboBox?.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return 1.0;
+
+            var text = item.Content as string ?? item.Content?.ToString() ?? string.Empty;
+            var token = text.Split(' ')[0].Replace("×", string.Empty).Replace("x", string.Empty).Trim();
+            return double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value > 0
+                ? value
+                : 1.0;
+        }
+
         private async void CloneVoiceButton_Click(object sender, RoutedEventArgs e)
         {
             // 1) 选音频文件
@@ -543,6 +578,8 @@ namespace AIAssistant.Host.Wpf
                 {
                     _readingService.VoiceId = _ttsService.VoiceId;
                 }
+
+                _readingService.SpeechSpeed = SelectedSpeechSpeed();
 
                 if (_readingWindow is null || !_readingWindow.IsLoaded)
                 {
